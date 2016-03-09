@@ -1,8 +1,6 @@
 #include "buffered_client_iostream.h"
 #include "tcp_server.h"
-#include "http_server.h"
 #include "tcp_socket.h"
-#include "STSSocket.h"
 #include "thread_pool.h"
 #include "acceptor_base.h"
 #include <chrono>
@@ -55,8 +53,8 @@ int main(){
 #endif
 #if 1
 	A obj;
-	http_server ts(std::make_shared<tcp_socket>(), 1);
-	ts.start(http_server::endpoint(1234));
+	tcp_server ts(std::make_shared<tcp_socket>(), 1,obj);
+	ts.start(tcp_server::endpoint(1234));
 #endif
 	while(1){
 		std::this_thread::sleep_for(std::chrono::seconds(1));
