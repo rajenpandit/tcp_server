@@ -12,7 +12,7 @@ tcp_server.o:
 epoll_reactor.o:
 	g++ $(CXXFLAGS) -c epoll_reactor.cpp
 release:
-	ar -rv libtcpsocket.a $(OBJS)
+	ar -rv libtcpserver.a $(OBJS)
 clean:
-	rm *.o
+	rm *.o libtcpserver.a
 
