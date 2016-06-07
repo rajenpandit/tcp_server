@@ -4,7 +4,7 @@
 #include <cstring>
 
 bool tcp_socket::create(int port){
-	create(port,NULL);
+	return create(port,NULL);
 }
 bool tcp_socket::create(int port,const char* ip){
 	addrinfo* result;
@@ -15,7 +15,7 @@ bool tcp_socket::create(int port,const char* ip){
 	_addrinfo.ai_flags = AI_PASSIVE; /* All Interfaces */
 	std::string s_port = std::to_string(port);
 	
-	if(getaddrinfo (NULL, s_port.c_str(), &_addrinfo, &result) != 0)
+	if(getaddrinfo (ip, s_port.c_str(), &_addrinfo, &result) != 0)
 		return false;
 	for(rp = result; rp != NULL ; rp = rp->ai_next){
 		int fd;
@@ -29,7 +29,7 @@ bool tcp_socket::create(int port,const char* ip){
 		freeaddrinfo(result);
 	return true;
 }
-bool tcp_socket::bind(bool reuse_add, bool keep_alive, bool no_delay){
+bool tcp_socket::bind(__attribute__((unused)) bool reuse_add, __attribute__((unused)) bool keep_alive, __attribute__((unused)) bool no_delay){
 	if(::bind(_fd, _addrinfo.ai_addr, _addrinfo.ai_addrlen) != 0)
 		return false;
 	return true;
@@ -65,7 +65,12 @@ bool tcp_socket::accept(socket_base &socket){
 		return false;
 	}	
 }
-bool tcp_socket::connect(const char* ip){
+bool tcp_socket::connect(){
+	if(::connect(_fd,_addrinfo.ai_addr,_addrinfo.ai_addrlen) == -1){
+		return false;
+	}
+	_is_connected = true;
+	return true;
 }
 bool tcp_socket::send(const void *buffer, size_t size){
 	return send(buffer,size,0);
@@ -77,11 +82,11 @@ bool tcp_socket::send(const void *buffer, size_t size, int flags){
 }
 bool tcp_socket::receive(void *buffer,size_t size,bool block){
 	if(block){
-		if(recv(_fd,buffer,size,MSG_WAITALL) == -1)
+		if(recv(_fd,buffer,size,MSG_WAITALL) <= 0)
 			return false;
 	}
 	else{
-		if(recv(_fd,buffer,size,MSG_DONTWAIT) == -1)
+		if(recv(_fd,buffer,size,MSG_DONTWAIT) <= 0)
 			return false;
 	}
 	return true;

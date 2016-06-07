@@ -68,8 +68,5 @@ private:
 	epoll_reactor _reactor;
 	std::function<void(server_status_t, error_t)> _error_handler;	
 	acceptor_base& _accept;
-	//std::function<std::shared_ptr<client_iostream>()> _accept;
-//	std::function<void(socket_base&)> _accept;
-	std::map<int,std::shared_ptr<fdbase>> _client_map;
 };
 #endif

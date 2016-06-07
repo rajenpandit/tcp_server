@@ -1,24 +1,36 @@
 #ifndef __SERVER_SOCKET_H_05032016_RAJEN__
 #define __SERVER_SOCKET_H_05032016_RAJEN__
 
-#include "socket.h"
 #include "fdbase.h"
-
+#include <memory>
 class server_socket : public fdbase{
 public:
-#if 0
-	server_socket(socket_base&& soc) : _socket(std::move(soc)){
+	server_socket(std::unique_ptr<socket_base> soc) : fdbase(soc->get_fd()), _socket(std::move(soc)){
+		
 	}
-#endif
-	server_socket(std::shared_ptr<socket_base> soc) : _socket(soc){
+	server_socket(const server_socket&) = delete;
+	void operator = (const server_socket&) = delete;
+	server_socket(server_socket&& s_socket) : fdbase(s_socket.get_fd()){
+		swap(*this, s_socket);
 	}
-	server_socket(socket& soc) : _socket(soc){
+	void operator = (server_socket&& s_socket){
+		swap(*this, s_socket);
+	}
+	~server_socket(){
 	}
 public:
-	virtual socket& get_socket() override{
-		return _socket;
+	friend void swap(server_socket& s_socket1, server_socket& s_socket2){
+		std::lock(s_socket1._mutex, s_socket2._mutex);	
+		std::lock_guard<std::mutex> lk1(s_socket1._mutex, std::adopt_lock);
+		std::lock_guard<std::mutex> lk2(s_socket2._mutex, std::adopt_lock);
+		
+		std::swap(s_socket1._socket,s_socket2._socket);
+	}
+public:
+	socket_base* operator -> (){
+		return _socket.get();
 	}
 private:
-	socket _socket;
+	std::unique_ptr<socket_base> _socket;
 };
 #endif

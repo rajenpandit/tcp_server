@@ -1,24 +1,25 @@
 #include "buffered_client_iostream.h"
-#include "tcp_server.h"
 #include "tcp_socket.h"
+#include "tcp_socket_factory.h"
 #include "thread_pool.h"
 #include "acceptor_base.h"
+#include "tcp_connection.h"
 #include <chrono>
 #include <thread>
 #include <iostream>
 #include <memory>
 
 thread_pool tp(2);
-class client_handler : public buffered_client_iostream{
+class client_handler : public client_iostream{
 public:
-	client_handler() : buffered_client_iostream(std::make_shared<tcp_socket>()){
+	client_handler() : client_iostream(std::make_unique<tcp_socket>()){
 	//	set_condition(datasize(5));	
 	}
 public:
 	virtual void read(void* data, size_t size) override{
 		static int x=0;
 		std::string str = std::to_string(++x);
-		std::cout<<static_cast<char*>(data)<<std::endl;
+		std::cout<<"data:"<<static_cast<char*>(data)<<std::endl;
 		write(str.c_str(),str.length());
 	}
 };
@@ -27,7 +28,7 @@ public:
 	virtual std::shared_ptr<client_iostream> get_new_client() override{
 		return std::make_shared<client_handler>();
 	}
-	virtual void notify_accept(std::shared_ptr<client_iostream> client, acceptor_status_t status) override{
+	virtual void notify_accept(std::shared_ptr<client_iostream> client,__attribute__((unused)) acceptor_status_t status) override{
 		client->write("hello\n",6);
 	}
 };
@@ -51,10 +52,21 @@ int main(){
 	tp.add_task(make_task(fun,z,4));
 	tp.add_task(make_task(fun,x,4));
 #endif
-#if 1
+#if 0
 	A obj;
 	tcp_server ts(std::make_shared<tcp_socket>(), 1,obj);
 	ts.start(tcp_server::endpoint(1234));
+#endif
+#if 1
+	tcp_socket_factory sf;
+	tcp_connection ts(sf,1);
+	client_handler* client = ts.get_connection<client_handler>("127.0.0.1",2345);
+	std::string str ("Hello");
+	if(client)
+		client->write(str.c_str(),str.length());	
+
+//	ts.start_listening(std::make_shared<A>(),tcp_connection::endpoint(1234));
+	ts.start_reactor();
 #endif
 	while(1){
 		std::this_thread::sleep_for(std::chrono::seconds(1));

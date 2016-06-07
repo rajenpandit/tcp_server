@@ -1,6 +1,6 @@
-CXXFLAGS:=$(CXXFLAGS) -std=c++11 -g  -I../thread_pool
+CXXFLAGS:=$(CXXFLAGS) -std=c++14 -g  -Wall -Wextra -I../thread_pool
 THREAD_POOL_LIB_PATH=../thread_pool
-OBJS=tcp_socket.o tcp_server.o epoll_reactor.o
+OBJS=tcp_socket.o epoll_reactor.o tcp_connection.o
 Test:Test.o $(OBJS) 
 	g++ $(CXXFLAGS) Test.o $(OBJS) $(THREAD_POOL_LIB_PATH)/thread_pool.o  -lpthread -o Test.exe 
 tcp_socket.o:
@@ -11,6 +11,8 @@ tcp_server.o:
 	g++ $(CXXFLAGS) -c tcp_server.cpp
 epoll_reactor.o:
 	g++ $(CXXFLAGS) -c epoll_reactor.cpp
+tcp_connection.o:
+	g++ $(CXXFLAGS) -c tcp_connection.cpp
 release:
 	ar -rv libtcpserver.a $(OBJS)
 clean:

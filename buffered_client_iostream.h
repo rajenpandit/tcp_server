@@ -3,27 +3,16 @@
 #include <vector>
 #include <algorithm>
 #include "client_iostream.h"
+#include <iostream>
 class condition_t{
 public:
-	virtual void push_back (const char& c){
-		_buffered_data.push_back(c);
+	condition_t() : _is_true(false){
 	}
-	virtual bool is_true() = 0;
 public:
-	char* get_data(){
-		if(is_true()){
-			return &_current_data[0];
-		}
-	}
-	size_t get_size(){
-		return _current_data.size();
-	}
-	void clear(){
-		_current_data.clear();
-	}
+	virtual bool is_true() = 0;
+	virtual std::vector<char>::const_iterator check(const std::vector<char>& data,int last_size)=0;
 protected:
-	std::vector<char> _current_data;
-	std::vector<char> _buffered_data;
+	bool _is_true;
 };
 
 class datasize_t : public condition_t{
@@ -32,19 +21,17 @@ public:
 		_size = size;
 	}
 public:
+	virtual std::vector<char>::const_iterator check(const std::vector<char>& data, __attribute__((unused)) int last_size){
+		if(data.size() >= _size)	
+		{
+			_is_true = true;
+			return data.cbegin()+_size;
+		}
+		_is_true = false;
+		return data.cend();
+	}
 	virtual bool is_true(){
-		if(_buffered_data.size() >= _size || _current_data.size() >= _size){
-			size_t size = _current_data.size();
-			if(size < _size){
-				auto it = std::next(_buffered_data.begin(), _size-size);
-				std::move(_buffered_data.begin(), it, std::back_inserter(_current_data));
-				_buffered_data.erase(_buffered_data.begin(), it);
-			}
-			return true;
-		}
-		else{
-			return false;
-		}
+		return _is_true;
 	}
 private:
 	size_t _size;
@@ -55,66 +42,108 @@ public:
 	string_found_t(const std::string &s) : _string(s){
 	}
 public:
-	virtual bool is_true(){
-		if(_current_data.size() > 0)
-			return true;
-		if(_buffered_data.size() > 0){
-			auto it = _buffered_data.begin();
-			it += (_index - _string.length());
-			it = std::search(it , _buffered_data.end(), _string.begin(),_string.end());
-			if(it != _buffered_data.end()){
-				it += _string.length();	
-				std::move(_buffered_data.begin(), it, std::back_inserter(_current_data));
-				_buffered_data.erase(_buffered_data.begin(), it);
-				_index = 0;
-				return true;
-			}
-			else{
-				_index = _buffered_data.size();
-				return false;
-			}
+	virtual std::vector<char>::const_iterator check(const std::vector<char>& data,int last_size){
+		auto it = data.cbegin() + last_size;
+		it = std::search(it , data.end(), _string.begin(),_string.end());		
+		if(it != data.cend()){
+			_is_true = true;
+			return it+_string.length();
 		}
 		else{
-			return false;
+			_is_true = false;
+			return it;
 		}
-		return false;
+	}
+	virtual bool is_true(){
+		return _is_true;
 	}
 private:
 	std::string _string;
-	size_t _index;
 };
 
 
 class buffered_client_iostream : public client_iostream{
-public:
-	buffered_client_iostream(std::shared_ptr<socket_base> soc) : client_iostream(soc){
-	}
-	buffered_client_iostream(socket& soc) : client_iostream(soc){
-	}
-public:
-	virtual void notify_read(unsigned int events){
-		char ch;
-		if(_condition != nullptr){
-			while(_socket.receive(&ch, 1, false)){
-				_condition->push_back(ch);
-			}
-			while(_condition->is_true()){
-				read(_condition->get_data(),_condition->get_size());
-				_condition->clear();
-			}
+	public:
+		buffered_client_iostream(std::unique_ptr<socket_base> soc) : client_iostream(std::move(soc)){
+			init();
 		}
-		else{
-			std::vector<char> data;
-			while(_socket.receive(&ch, 1, false))
-				data.push_back(ch);
-			read(&data[0],data.size());
+		buffered_client_iostream(const buffered_client_iostream&) = delete;
+		void operator = (const buffered_client_iostream&) = delete;
+		buffered_client_iostream(buffered_client_iostream&& bc_ios) : client_iostream(std::forward<buffered_client_iostream&&>(bc_ios)){
 		}
-	}
-	void set_condition(std::unique_ptr<condition_t> condition){
-		_condition = std::move(condition);
-	}
-private:
-	std::unique_ptr<condition_t> _condition;
+		void operator = (buffered_client_iostream && bc_ios){
+			swap(*this, bc_ios);
+		}
+		void init(){
+			_data.clear();
+		}
+		friend void swap(buffered_client_iostream& bc_ios1, buffered_client_iostream& bc_ios2){
+			std::lock(bc_ios1._mutex, bc_ios2._mutex);
+			std::lock_guard<std::mutex> lk1(bc_ios1._mutex, std::adopt_lock);
+			std::lock_guard<std::mutex> lk2(bc_ios2._mutex, std::adopt_lock);
+
+			std::swap(bc_ios1._conditions, bc_ios2._conditions);
+			std::swap(bc_ios1._data, bc_ios2._data);
+			std::swap(bc_ios1._segmented_data, bc_ios2._segmented_data);
+			std::swap(bc_ios1._last_check, bc_ios2._last_check);
+		}
+	public:
+		virtual void notify_read(__attribute__((unused)) unsigned int events){
+			char ch;
+			while(_socket->receive(&ch, 1, false)){
+				std::cout<<ch;
+				_data.push_back(ch);
+			}
+			notify();	
+		}
+		bool is_data_available(){
+			if( !_conditions.empty() ){
+				if( !_data.empty() ){
+					for(auto &condition : _conditions)
+					{
+						auto cit = condition->check(_data,0);
+						if( condition->is_true()){
+							//	read( &_data[0], cit - _data.cbegin() );
+							_segmented_data.assign(_data.cbegin(),cit);					
+							_data.erase(_data.cbegin(),cit);
+							_last_check=0;
+
+							return true;
+						}
+					}
+					_last_check=_data.size();
+				}
+			}
+			else{
+				if(!_data.empty()){
+					_segmented_data=_data;
+					_data.clear();
+					return true;
+				}
+			}
+			return false;
+		}
+		std::vector<char> get_data(){
+			std::vector<char> vec = _segmented_data;
+			_segmented_data.clear();
+			return vec;
+		}
+		void set_condition(std::unique_ptr<condition_t> condition){
+			_conditions.push_back(std::move(condition));
+		}
+		void clear_conditions(){
+			_conditions.clear();
+		}
+		void read(__attribute__((unused)) void* data, __attribute__((unused)) size_t size) {
+			//Not used
+		}
+	public:
+		virtual void notify() = 0 ;
+	private:
+		std::vector<std::unique_ptr<condition_t>> _conditions;
+		std::vector<char> _data;
+		std::vector<char> _segmented_data;
+		int _last_check;
 };
 
 #if 1

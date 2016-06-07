@@ -10,7 +10,7 @@
 
 class tcp_socket : public socket_base{
 public:
-	virtual const int get_fd() override{
+	virtual const int& get_fd() override{
 		return _fd;
 	}
 	virtual bool create(int port);
@@ -18,7 +18,7 @@ public:
 	virtual bool bind(bool reuse_add=true, bool keep_alive=true, bool no_delay=true);
 	virtual bool listen(int backlog);
 	virtual bool accept(socket_base &socket);
-	virtual bool connect(const char* ip);
+	virtual bool connect();
 	virtual bool send(const void *buffer, size_t size);
 	virtual bool send(const void *buffer, size_t size, int flags);
 	virtual bool receive(void *buffer,size_t size,bool block=true);
