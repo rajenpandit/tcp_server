@@ -104,7 +104,6 @@ T* tcp_connection::get_connection(const std::string& ip, int port, TArgs... args
 			std::lock_guard<std::mutex> lk(_client_map_mutex);
 			auto& connection_que = it->second;
 			if( !connection_que.empty() ){
-				std::cout<<"Object Count["<<key<<"]"<<connection_que.size()<<std::endl;
 				auto fd = connection_que.front();	
 				connection_que.pop();
 				client = std::dynamic_pointer_cast<T>(fd);
@@ -115,7 +114,6 @@ T* tcp_connection::get_connection(const std::string& ip, int port, TArgs... args
 		_client_map.insert(std::pair<std::string,std::queue<std::shared_ptr<fdbase>>>(key,std::queue<std::shared_ptr<fdbase>>()));
 	}
 	if(client == nullptr){
-		std::cout<<"Crating New Object"<<std::endl;
 		client = std::make_shared<T>(args...);
 		(*client)->create(port,ip.c_str());
 		if((*client)->connect() == false)

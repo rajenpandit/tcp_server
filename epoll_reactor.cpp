@@ -12,14 +12,12 @@ bool epoll_reactor::register_descriptor(std::shared_ptr<fdbase> fdb, std::functi
 		}
 		_callback_map[fd]= std::make_shared<epoll_call_back>(fdb,call_back_fun);
 		event.data.ptr = _callback_map[fd].get(); //lifetime of pointer to object will be managed by _callback_map
-		std::cout<<"Registering FD:"<<fd<<std::endl;
 	}
 
 	event.events = EPOLLIN | EPOLLET | EPOLLRDHUP;
 	s = epoll_ctl (_efd, EPOLL_CTL_ADD, fd, &event);
 	if (s == -1)
 	{
-		std::cout<<"Error during register"<<std::endl;
 		return false;
 	}
 	return true;
@@ -31,7 +29,6 @@ std::shared_ptr<fdbase> epoll_reactor::remove_descriptor(int fd){
 		return nullptr;
 	auto it = _callback_map.find(fd);
 	if(it != _callback_map.end()){
-		std::cout<<"Removing FD:"<<fd<<std::endl;
 		std::shared_ptr<fdbase> fd = it->second->get_fd();
 		_callback_map.erase(it);
 		return fd;

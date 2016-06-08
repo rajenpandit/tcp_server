@@ -91,7 +91,6 @@ class buffered_client_iostream : public client_iostream{
 		virtual void notify_read(__attribute__((unused)) unsigned int events){
 			char ch;
 			while(_socket->receive(&ch, 1, false)){
-				std::cout<<ch;
 				_data.push_back(ch);
 			}
 			notify();	

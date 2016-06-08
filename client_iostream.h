@@ -34,7 +34,6 @@ public:
 	bool close(){
 		for(auto& close_handler : _close_handlers)
 		{
-			std::cout<<"Calling close handler\n";
 			close_handler(_socket->get_fd());
 		}
 		_close_handlers.clear();

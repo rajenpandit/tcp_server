@@ -11,21 +11,17 @@ void tcp_connection::remove_client(int fd){
  */
 void tcp_connection::client_handler(std::shared_ptr<fdbase> fdb, unsigned int events){
 	std::shared_ptr<client_iostream> client = std::dynamic_pointer_cast<client_iostream>(fdb);
-	std::cout<<"Event Flag:"<<events<<std::endl;
 	if(client != nullptr){
 		if(client->get_mutex().try_lock())
 		{
 			_threads->add_task(make_task([=](){
 						//std::lock_guard<std::mutex> lk(client);
 						std::lock_guard<std::mutex> lk(*client, std::adopt_lock);
-						std::cout<<events <<"& ("<<EPOLLRDHUP<<"|"<<EPOLLHUP<<")"<<(events & (EPOLLRDHUP | EPOLLHUP))<<std::endl;
 						if(events & (EPOLLRDHUP | EPOLLHUP)){
-						std::cout<<"Closing connection\n";
-						client->close();
+							client->close();
 						}
 						else{
-						std::cout<<"Notifying client\n";
-						client->notify_read(events);
+							client->notify_read(events);
 						}
 						}));
 		}
@@ -59,7 +55,6 @@ void tcp_connection::accept(std::shared_ptr<fdbase> fdb,__attribute__((unused)) 
 		std::shared_ptr<client_iostream> client=_acceptor->get_new_client();
 		if(ssocket->accept(*client))
 		{
-			std::cout<<"Max Connection:"<<_max_connection<<std::endl;
 			if(_max_connection == 0){
 				client->close();
 				return;

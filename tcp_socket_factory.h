@@ -8,7 +8,6 @@
 class tcp_socket_factory : public socket_factory{
 public:
 	std::unique_ptr<socket_base> get_socket() override{
-		std::cout<<"returning socket\n";
 		return std::make_unique<tcp_socket>();
 	}
 };
