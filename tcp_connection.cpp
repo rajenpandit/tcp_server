@@ -4,6 +4,7 @@
 
 void tcp_connection::remove_client(int fd){
 	_reactor.remove_descriptor(fd);
+	++_max_connection;
 }
 /* 
  * tcp_connection::client_handler function will be called whenever client socket will receive an event.
@@ -58,6 +59,11 @@ void tcp_connection::accept(std::shared_ptr<fdbase> fdb,__attribute__((unused)) 
 		std::shared_ptr<client_iostream> client=_acceptor->get_new_client();
 		if(ssocket->accept(*client))
 		{
+			std::cout<<"Max Connection:"<<_max_connection<<std::endl;
+			if(_max_connection == 0){
+				client->close();
+				return;
+			}
 			using std::placeholders::_1;
 			using std::placeholders::_2;
 #if 0
@@ -66,10 +72,10 @@ void tcp_connection::accept(std::shared_ptr<fdbase> fdb,__attribute__((unused)) 
 				std::cout<<"unable to make non block"<<std::endl;
 			}
 #endif
-			std::cout<<"Fd:"<<client->get_fd()<<std::endl;
 			client->register_close_handler(std::bind(&tcp_connection::remove_client,this,_1));
 			_reactor.register_descriptor(client,std::bind(&tcp_connection::client_handler,this,_1,_2));
 			_acceptor->notify_accept(client, acceptor_base::ACCEPT_SUCCESS);
+			--_max_connection;
 		}
 		else{
 			_acceptor->notify_accept(client, acceptor_base::ACCEPT_FAILED);
@@ -85,8 +91,10 @@ void tcp_connection::set_error(connection_status_t status, error_t error){
 		_error_handler(_connection_status, _connection_error);
 }
 
-void tcp_connection::start_listening(std::shared_ptr<acceptor_base> acceptor,const endpoint &e, __attribute__((unused)) bool block) noexcept{
-	_acceptor=acceptor;	
+void tcp_connection::start_listening(std::shared_ptr<acceptor_base> acceptor,const endpoint &e,unsigned int max_connection,
+		__attribute__((unused)) bool block) noexcept{
+	_acceptor = acceptor;	
+	_max_connection = max_connection;
 	std::unique_ptr<socket_base> socket = _socket_factory.get_socket();
 //	socket.make_socket_non_block();
 	if(e.ip.length()){

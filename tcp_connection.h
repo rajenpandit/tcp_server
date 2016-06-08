@@ -10,6 +10,8 @@
 #include <map>
 #include <memory>
 #include <unordered_map>
+#include <limits>
+#include <atomic>
 
 class tcp_connection{
 public:
@@ -64,7 +66,8 @@ public:
 	T* get_connection(const std::string& ip, int port, TArgs... args);
 	void release_connection(client_iostream* client);
 public: //functionalities
-	void start_listening(std::shared_ptr<acceptor_base> accept,const endpoint &e, bool block=true) noexcept;	
+	void start_listening(std::shared_ptr<acceptor_base> accept,const endpoint &e,unsigned int max_connection=std::numeric_limits<unsigned int>::max(),
+			bool block=true) noexcept;	
 	void start_reactor(bool block=true){
 		_threads->start(); // no action will be taken if threads are already running
 		if(block)
@@ -88,6 +91,7 @@ private:
 	std::shared_ptr<acceptor_base> _acceptor;
 	std::unordered_map<std::string,std::queue<std::shared_ptr<fdbase>>> _client_map;
 	std::mutex _client_map_mutex;
+	std::atomic_uint _max_connection;
 };
 
 template<typename T, class... TArgs>
