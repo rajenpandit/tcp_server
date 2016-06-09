@@ -1,9 +1,9 @@
 #include "tcp_connection.h"
 #include "server_socket.h"
 #include <mutex>
+#include <experimental/string_view>
 
-void tcp_connection::remove_client(int fd){
-	_reactor.remove_descriptor(fd);
+void tcp_connection::remove_client(__attribute__((unused)) int fd){
 	++_max_connection;
 }
 /* 
@@ -17,6 +17,7 @@ void tcp_connection::client_handler(std::shared_ptr<fdbase> fdb, unsigned int ev
 			_threads->add_task(make_task([=](){
 						//std::lock_guard<std::mutex> lk(client);
 						std::lock_guard<std::mutex> lk(*client, std::adopt_lock);
+						std::cout<<"Event Flag:"<<events<<std::endl;
 						if(events & (EPOLLRDHUP | EPOLLHUP)){
 							client->close();
 						}
@@ -50,30 +51,31 @@ void tcp_connection::release_connection(client_iostream* client){
 void tcp_connection::accept(std::shared_ptr<fdbase> fdb,__attribute__((unused)) unsigned int events){
 	//socket_base client_socket=_socket.get_new_socket();
 	try{
-		std::lock_guard<std::mutex> lk(*fdb);
-		server_socket& ssocket = (dynamic_cast<server_socket&>(*fdb));
-		std::shared_ptr<client_iostream> client=_acceptor->get_new_client();
-		if(ssocket->accept(*client))
-		{
-			if(_max_connection == 0){
-				client->close();
-				return;
-			}
-			using std::placeholders::_1;
-			using std::placeholders::_2;
-#if 0
-			if(!client_socket.make_socket_non_block())
+		while(true){
+			std::lock_guard<std::mutex> lk(*fdb);
+			server_socket& ssocket = (dynamic_cast<server_socket&>(*fdb));
+			std::shared_ptr<client_iostream> client=_acceptor->get_new_client();
+			if(ssocket->accept(*client))
 			{
-				std::cout<<"unable to make non block"<<std::endl;
-			}
+				if(_max_connection == 0){
+					std::experimental::string_view msg = "Connection Denied, Server busy!!!\r\n";
+					client->write(msg.data(),msg.length());
+					client->close();
+					return;
+				}
+				using std::placeholders::_1;
+				using std::placeholders::_2;
+#if 0
+				if(!client_socket.make_socket_non_block())
+				{
+					std::cout<<"unable to make non block"<<std::endl;
+				}
 #endif
-			client->register_close_handler(std::bind(&tcp_connection::remove_client,this,_1));
-			_reactor.register_descriptor(client,std::bind(&tcp_connection::client_handler,this,_1,_2));
-			_acceptor->notify_accept(client, acceptor_base::ACCEPT_SUCCESS);
-			--_max_connection;
-		}
-		else{
-			_acceptor->notify_accept(client, acceptor_base::ACCEPT_FAILED);
+				client->register_close_handler(std::bind(&tcp_connection::remove_client,this,_1));
+				_reactor.register_descriptor(client,std::bind(&tcp_connection::client_handler,this,_1,_2));
+				_acceptor->notify_accept(client, acceptor_base::ACCEPT_SUCCESS);
+				--_max_connection;
+			}
 		}
 	}
 	catch(const std::bad_cast& e){
@@ -91,7 +93,6 @@ void tcp_connection::start_listening(std::shared_ptr<acceptor_base> acceptor,con
 	_acceptor = acceptor;	
 	_max_connection = max_connection;
 	std::unique_ptr<socket_base> socket = _socket_factory.get_socket();
-//	socket.make_socket_non_block();
 	if(e.ip.length()){
 		if(!socket->create(e.port,e.ip.c_str())){	
 			set_error(SYNC_SENT,CREATE_FAILED);	
@@ -108,6 +109,7 @@ void tcp_connection::start_listening(std::shared_ptr<acceptor_base> acceptor,con
 	if(!socket->listen(e.backlog)){
 		set_error(SYNC_SENT,LISTEN_FAILED);	
 	}
+	socket->set_block_state(false);
 
 	using std::placeholders::_1;
 	using std::placeholders::_2;

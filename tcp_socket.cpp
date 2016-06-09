@@ -97,6 +97,3 @@ bool tcp_socket::close(){
 	_is_connected=false;	
 	return true;
 }
-bool tcp_socket::is_connected(){
-	return _is_connected;
-}	

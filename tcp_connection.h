@@ -53,6 +53,7 @@ public:
 	}
 public:
 	void remove_client(int fd);
+	void remove_descriptor(int fd);
 	void client_handler(std::shared_ptr<fdbase> fdb, unsigned int events);	
 	void accept(std::shared_ptr<fdbase> fdb, unsigned int events);
 	connection_status_t get_connection_status() const{
@@ -119,7 +120,7 @@ T* tcp_connection::get_connection(const std::string& ip, int port, TArgs... args
 		if((*client)->connect() == false)
 			return nullptr;
 	}
-	client->register_close_handler(std::bind(&tcp_connection::remove_client,this,std::placeholders::_1));
+//	client->register_close_handler(std::bind(&tcp_connection::remove_descriptor,this,std::placeholders::_1));
 	_reactor.register_descriptor(client,std::bind(&tcp_connection::client_handler,this,std::placeholders::_1,std::placeholders::_2));
 	client->set_id(key);
 	return client.get();

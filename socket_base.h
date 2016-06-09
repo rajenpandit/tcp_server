@@ -4,10 +4,11 @@
 #include <memory>
 #include <iostream>
 #include <mutex>
+#include <unistd.h>
+#include <fcntl.h>
 class socket_base{
 
 public: //NOTE: All virtual function must be inherited by derived class
-	virtual const int& get_fd() = 0;
 
 	virtual bool create(int port) = 0;
 	virtual bool create(int port,const char *ip) = 0;
@@ -19,10 +20,25 @@ public: //NOTE: All virtual function must be inherited by derived class
 	virtual bool send(const void *buffer, size_t size, int flags) = 0;
 	virtual bool receive(void *buffer,size_t size,bool block=true) = 0;
 	virtual bool close() = 0;
-	virtual bool is_connected() = 0;
+public:
+	const int& get_fd(){
+		return _fd;
+	};
+	bool is_connected(){
+		return _is_connected;
+	}
+	bool set_block_state(bool blocking){
+		int flags = fcntl(_fd, F_GETFL, 0);
+		if (flags < 0) 
+			return false;
+		flags = blocking ? (flags&~O_NONBLOCK) : (flags|O_NONBLOCK);
+		return (fcntl(_fd, F_SETFL, flags) == 0) ? true : false;
+	}	
 public:
 	std::mutex _mutex;
+protected:
 	bool _is_connected;
+	int _fd;
 private:
 	std::shared_ptr<socket_base> _socket;
 	std::function<void(socket_base& , unsigned int)> _event_handler;

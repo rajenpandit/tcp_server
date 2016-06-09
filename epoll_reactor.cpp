@@ -47,6 +47,9 @@ bool epoll_reactor::run(){
 		{
 			epoll_call_back* epoll_call_back_p = static_cast<epoll_call_back*>(events[i].data.ptr);
 			(*epoll_call_back_p)(events[i].events);
+			if(events[i].events & (EPOLLRDHUP | EPOLLHUP)){
+				remove_descriptor(events[i].data.fd);
+			}
 		}
 		if(is_running == false){
 			free(events);
