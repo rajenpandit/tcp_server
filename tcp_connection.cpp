@@ -17,7 +17,6 @@ void tcp_connection::client_handler(std::shared_ptr<fdbase> fdb, unsigned int ev
 			_threads->add_task(make_task([=](){
 						//std::lock_guard<std::mutex> lk(client);
 						std::lock_guard<std::mutex> lk(*client, std::adopt_lock);
-						std::cout<<"Event Flag:"<<events<<std::endl;
 						if(events & (EPOLLRDHUP | EPOLLHUP)){
 							client->close();
 						}
@@ -68,7 +67,6 @@ void tcp_connection::accept(std::shared_ptr<fdbase> fdb,__attribute__((unused)) 
 #if 0
 				if(!client_socket.make_socket_non_block())
 				{
-					std::cout<<"unable to make non block"<<std::endl;
 				}
 #endif
 				client->register_close_handler(std::bind(&tcp_connection::remove_client,this,_1));

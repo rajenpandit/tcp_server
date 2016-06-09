@@ -45,7 +45,6 @@ void tcp_server::accept(fdbase& fdb, unsigned int events){
 #if 0
 			if(!client_socket.make_socket_non_block())
 			{
-				std::cout<<"unable to make non block"<<std::endl;
 			}
 #endif
 			client->register_close_handler(std::bind(&tcp_server::remove_client,this,_1));
