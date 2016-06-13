@@ -4,6 +4,9 @@
 #include <algorithm>
 #include "client_iostream.h"
 #include <iostream>
+#include <limits.h>
+#include <sys/ioctl.h>
+#include <experimental/string_view>
 class condition_t{
 public:
 	condition_t() : _is_true(false){
@@ -11,6 +14,7 @@ public:
 public:
 	virtual bool is_true() = 0;
 	virtual std::vector<char>::const_iterator check(const std::vector<char>& data,int last_size)=0;
+	virtual unsigned int read_size() = 0;
 protected:
 	bool _is_true;
 };
@@ -33,6 +37,9 @@ public:
 	virtual bool is_true(){
 		return _is_true;
 	}
+	virtual unsigned int read_size(){
+		return _size;
+	}
 private:
 	size_t _size;
 };
@@ -42,7 +49,8 @@ public:
 	string_found_t(const std::string &s) : _string(s){
 	}
 public:
-	virtual std::vector<char>::const_iterator check(const std::vector<char>& data,int last_size){
+	virtual std::vector<char>::const_iterator check(const std::vector<char>& data, __attribute__((unused)) int last_size){
+		#if 0
 		auto it = data.cbegin() + last_size;
 		it = std::search(it , data.end(), _string.begin(),_string.end());		
 		if(it != data.cend()){
@@ -53,9 +61,24 @@ public:
 			_is_true = false;
 			return it;
 		}
+		#else
+		std::experimental::string_view sv(&data[0],data.size());
+		auto it = sv.find(_string);
+		if(it != std::string::npos){
+			_is_true = true;
+			return data.cbegin() + it + _string.length();
+		}
+		else{
+			_is_true = false;
+			return data.cend();
+		}
+		#endif
 	}
 	virtual bool is_true(){
 		return _is_true;
+	}
+	virtual unsigned int read_size(){
+		return _string.length();
 	}
 private:
 	std::string _string;
@@ -84,17 +107,44 @@ class buffered_client_iostream : public client_iostream{
 
 			std::swap(bc_ios1._conditions, bc_ios2._conditions);
 			std::swap(bc_ios1._data, bc_ios2._data);
-			std::swap(bc_ios1._segmented_data, bc_ios2._segmented_data);
-			std::swap(bc_ios1._last_check, bc_ios2._last_check);
+			//std::swap(bc_ios1._segmented_data, bc_ios2._segmented_data);
+		//	std::swap(bc_ios1._last_check, bc_ios2._last_check);
 		}
 	public:
 		virtual void notify_read(__attribute__((unused)) unsigned int events){
-			char ch;
-			while(_socket->receive(&ch, 1, false)){
-				_data.push_back(ch);
+			int fd = _socket->get_fd();
+			int len=1;
+			ioctl(fd, FIONREAD, &len);
+			std::vector<char> v(len);
+			while(_socket->receive(&v[0], len, false)){
+				_data.insert(_data.end(),v.begin(),v.end());
 			}
-			notify();	
+			while(true){
+				if( !_conditions.empty() ){
+					if( !_data.empty() ){
+						for(auto &condition : _conditions)
+						{
+							auto cit = condition->check(_data,0);
+							if( condition->is_true()){
+								notify({_data.cbegin(),cit});	
+								_data.erase(_data.cbegin(),cit);
+								break;
+							}
+						}
+						continue;
+					}
+				}
+				else{
+					if(!_data.empty()){
+						notify(_data);	
+						_data.clear();
+						continue;
+					}
+				}
+				break;
+			}
 		}
+#if 0
 		bool is_data_available(){
 			if( !_conditions.empty() ){
 				if( !_data.empty() ){
@@ -127,6 +177,7 @@ class buffered_client_iostream : public client_iostream{
 			_segmented_data.clear();
 			return vec;
 		}
+#endif
 		void set_condition(std::unique_ptr<condition_t> condition){
 			_conditions.push_back(std::move(condition));
 		}
@@ -137,12 +188,12 @@ class buffered_client_iostream : public client_iostream{
 			//Not used
 		}
 	public:
-		virtual void notify() = 0 ;
+		virtual void notify(const std::vector<char>& data) = 0 ;
 	private:
 		std::vector<std::unique_ptr<condition_t>> _conditions;
 		std::vector<char> _data;
-		std::vector<char> _segmented_data;
-		int _last_check;
+//		std::vector<char> _segmented_data;
+	//	int _last_check;
 };
 
 #if 1

@@ -2,6 +2,7 @@
 #include "server_socket.h"
 #include <mutex>
 #include <experimental/string_view>
+#include <chrono>
 
 void tcp_connection::remove_client(__attribute__((unused)) int fd){
 	++_max_connection;
@@ -73,6 +74,9 @@ void tcp_connection::accept(std::shared_ptr<fdbase> fdb,__attribute__((unused)) 
 				_reactor.register_descriptor(client,std::bind(&tcp_connection::client_handler,this,_1,_2));
 				_acceptor->notify_accept(client, acceptor_base::ACCEPT_SUCCESS);
 				--_max_connection;
+			}
+			else{
+				break;
 			}
 		}
 	}

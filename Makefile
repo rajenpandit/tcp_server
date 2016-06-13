@@ -1,4 +1,4 @@
-CXXFLAGS:=$(CXXFLAGS) -std=c++14 -g  -Wall -Wextra -I../thread_pool
+CXXFLAGS:=$(CXXFLAGS) -std=c++14 -O3  -Wall -Wextra -I../thread_pool
 THREAD_POOL_LIB_PATH=../thread_pool
 OBJS=tcp_socket.o epoll_reactor.o tcp_connection.o
 Test:Test.o $(OBJS) 
