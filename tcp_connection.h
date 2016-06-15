@@ -56,6 +56,7 @@ public:
 	void remove_descriptor(int fd);
 	void client_handler(std::shared_ptr<fdbase> fdb, unsigned int events);	
 	void accept(std::shared_ptr<fdbase> fdb, unsigned int events);
+	void accept_impl(std::shared_ptr<fdbase> fdb, unsigned int events);
 	connection_status_t get_connection_status() const{
 		return _connection_status;
 	}	

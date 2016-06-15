@@ -1,17 +1,29 @@
 #include "epoll_reactor.h"
 #include <iostream>
+#include <chrono>
+#include <thread>
 bool epoll_reactor::register_descriptor(std::shared_ptr<fdbase> fdb, std::function<void(std::shared_ptr<fdbase>, unsigned int)> call_back_fun){
 	struct epoll_event event;
 	int s;
 	int fd=fdb->get_fd();
+
 	{
-		std::lock_guard<std::mutex> lk(_mutex);
+//		std::lock_guard<std::mutex> lk(_mutex);
+/*
 		auto it = _callback_map.find(fd);
 		if(it != _callback_map.end()){
 			_callback_map.erase(it);
 		}
-		_callback_map[fd]= std::make_shared<epoll_call_back>(fdb,call_back_fun);
+*/
+		if(_callback_map[fd] == nullptr){
+			_callback_map[fd]= std::make_shared<epoll_call_back>(fdb,call_back_fun);
+		}
+		else{
+		_callback_map.at(fd)->reset(fdb,call_back_fun);
+		}
+
 		event.data.ptr = _callback_map[fd].get(); //lifetime of pointer to object will be managed by _callback_map
+
 	}
 
 	event.events = EPOLLIN | EPOLLET | EPOLLRDHUP;
@@ -27,11 +39,18 @@ std::shared_ptr<fdbase> epoll_reactor::remove_descriptor(int fd){
 	/* In  kernel  versions before 2.6.9, the EPOLL_CTL_DEL operation required a non-NULL pointer in event, even though this argument is ignored. */
 	if(epoll_ctl (_efd, EPOLL_CTL_DEL, fd, NULL) == -1)
 		return nullptr;
+/*
 	auto it = _callback_map.find(fd);
 	if(it != _callback_map.end()){
 		std::shared_ptr<fdbase> fd = it->second->get_fd();
 		_callback_map.erase(it);
 		return fd;
+	}
+*/
+	if(_callback_map[fd]!=nullptr){
+		std::shared_ptr<fdbase> fdb = _callback_map[fd]->get_fd();
+		_callback_map[fd] = nullptr;
+		return fdb;
 	}
 	return nullptr;
 }
@@ -42,7 +61,11 @@ bool epoll_reactor::run(){
 	is_running=true;
 	while(true)
 	{
-		int n = epoll_wait (_efd, events, _max_events, 5);
+		int n = epoll_wait (_efd, events, _max_events, 10);
+#ifdef POLL_SLEEP
+		int waiting_time = 100;
+		std::chrono::high_resolution_clock::time_point t1 = std::chrono::high_resolution_clock::now();
+#endif
 		for (int i = 0; i < n; i++)
 		{
 			epoll_call_back* epoll_call_back_p = static_cast<epoll_call_back*>(events[i].data.ptr);
@@ -55,6 +78,14 @@ bool epoll_reactor::run(){
 			free(events);
 			return true;
 		}
+#ifdef POLL_SLEEP
+		std::chrono::high_resolution_clock::time_point t2 = std::chrono::high_resolution_clock::now();
+		auto duration = std::chrono::duration_cast<std::chrono::microseconds>( t2 - t1 ).count();
+		if( duration < waiting_time){
+			int sleep_time = waiting_time - duration;
+			std::this_thread::sleep_for(std::chrono::microseconds(sleep_time));
+		}
+#endif
 	}
 	is_running=false;
 }

@@ -48,15 +48,30 @@ void tcp_connection::release_connection(client_iostream* client){
  * once connection is accepted, the new connection client's socket will be passed as a parameter by
  * user's callback function _accept.
  */
-void tcp_connection::accept(std::shared_ptr<fdbase> fdb,__attribute__((unused)) unsigned int events){
+void tcp_connection::accept(std::shared_ptr<fdbase> fdb, unsigned int events){
 	//socket_base client_socket=_socket.get_new_socket();
+
+		if(fdb->get_mutex().try_lock())
+		{
+			_threads->add_task(make_task([=](){
+						std::lock_guard<std::mutex> lk(fdb->get_mutex(), std::adopt_lock);
+						accept_impl(fdb,events);
+						}));
+		}
+	
+}
+void tcp_connection::accept_impl(std::shared_ptr<fdbase> fdb,__attribute__((unused)) unsigned int events){
+
 	try{
 		while(true){
-			std::lock_guard<std::mutex> lk(*fdb);
+			//	std::lock_guard<std::mutex> lk(*fdb);
 			server_socket& ssocket = (dynamic_cast<server_socket&>(*fdb));
 			std::shared_ptr<client_iostream> client=_acceptor->get_new_client();
-			if(ssocket->accept(*client))
+			if(!ssocket->accept(*client))
 			{
+				break;
+			}
+			_threads->add_task(make_task([=](){
 				if(_max_connection == 0){
 					std::experimental::string_view msg = "Connection Denied, Server busy!!!\r\n";
 					client->write(msg.data(),msg.length());
@@ -65,19 +80,12 @@ void tcp_connection::accept(std::shared_ptr<fdbase> fdb,__attribute__((unused)) 
 				}
 				using std::placeholders::_1;
 				using std::placeholders::_2;
-#if 0
-				if(!client_socket.make_socket_non_block())
-				{
-				}
-#endif
+
 				client->register_close_handler(std::bind(&tcp_connection::remove_client,this,_1));
 				_reactor.register_descriptor(client,std::bind(&tcp_connection::client_handler,this,_1,_2));
 				_acceptor->notify_accept(client, acceptor_base::ACCEPT_SUCCESS);
 				--_max_connection;
-			}
-			else{
-				break;
-			}
+			}));
 		}
 	}
 	catch(const std::bad_cast& e){

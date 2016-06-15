@@ -122,16 +122,19 @@ class buffered_client_iostream : public client_iostream{
 			while(true){
 				if( !_conditions.empty() ){
 					if( !_data.empty() ){
+						bool is_notified=false;
 						for(auto &condition : _conditions)
 						{
 							auto cit = condition->check(_data,0);
 							if( condition->is_true()){
 								notify({_data.cbegin(),cit});	
 								_data.erase(_data.cbegin(),cit);
+								is_notified = true;
 								break;
 							}
 						}
-						continue;
+						if(is_notified)		
+							continue;
 					}
 				}
 				else{
