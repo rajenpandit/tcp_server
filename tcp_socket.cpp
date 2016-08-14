@@ -30,6 +30,9 @@ bool tcp_socket::create(int port,const char* ip){
 	return true;
 }
 bool tcp_socket::bind(__attribute__((unused)) bool reuse_add, __attribute__((unused)) bool keep_alive, __attribute__((unused)) bool no_delay){
+	int enable = 1;
+	if(reuse_add)
+		setsockopt(_fd,SOL_SOCKET,SO_REUSEADDR,&enable,sizeof(enable));
 	if(::bind(_fd, _addrinfo.ai_addr, _addrinfo.ai_addrlen) != 0)
 		return false;
 	return true;

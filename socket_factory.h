@@ -3,6 +3,6 @@
 #include "socket_base.h"
 class socket_factory{
 public:
-	virtual	std::unique_ptr<socket_base> get_socket() = 0;	
+	virtual	std::unique_ptr<socket_base> get_socket() const = 0;	
 };
 #endif	

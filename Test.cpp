@@ -15,6 +15,10 @@ public:
 	client_handler() : client_iostream(std::make_unique<tcp_socket>()){
 	//	set_condition(datasize(5));	
 	}
+	~client_handler()
+	{
+		std::cout<<"Destroying client"<<std::endl;
+	}
 public:
 	virtual void read(void* data, size_t size) override{
 		static int x=0;
@@ -59,13 +63,15 @@ int main(){
 #endif
 #if 1
 	tcp_socket_factory sf;
-	tcp_connection ts(sf,1);
+	tcp_connection ts(sf,2);
+#if 0
 	client_handler* client = ts.get_connection<client_handler>("127.0.0.1",2345);
 	std::string str ("Hello");
 	if(client)
 		client->write(str.c_str(),str.length());	
+#endif
 
-//	ts.start_listening(std::make_shared<A>(),tcp_connection::endpoint(1234));
+	ts.start_listening(std::make_shared<A>(),tcp_connection::endpoint(1234));
 	ts.start_reactor();
 #endif
 	while(1){

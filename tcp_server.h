@@ -16,15 +16,17 @@ public:
 public:
 	class endpoint{
 	public:
-		endpoint(int port, const std::string& ip="", int backlog=5){
+		endpoint(int port, const std::string& ip="", int backlog=5, bool reuse_add=true){
 			this->port = port;
 			this->ip = ip;
 			this->backlog = backlog;
+			this->reuse_add = reuse_add;
 		}
 	private:
 		int port;
 		std::string ip;
 		int backlog;
+		bool reuse_add;
 	friend class tcp_server;
 	};
 public:

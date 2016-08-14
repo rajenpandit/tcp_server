@@ -113,13 +113,18 @@ class buffered_client_iostream : public client_iostream{
 	public:
 		virtual void notify_read(__attribute__((unused)) unsigned int events){
 			int fd = _socket->get_fd();
-			int len=1;
-			ioctl(fd, FIONREAD, &len);
-			std::vector<char> v(len);
-			while(_socket->receive(&v[0], len, false)){
-				_data.insert(_data.end(),v.begin(),v.end());
-			}
 			while(true){
+				int len=1;
+				ioctl(fd, FIONREAD, &len);
+				std::vector<char> v(len);
+				std::cout<<"Attempting to receive:"<<len<<std::endl;
+				if(_socket->receive(&v[0], len, false)){
+					_data.insert(_data.end(),v.begin(),v.end());
+				}
+				else{
+					std::cout<<"No data receieved"<<std::endl;
+				}
+				std::cout<<"Data received"<<std::endl;
 				if( !_conditions.empty() ){
 					if( !_data.empty() ){
 						bool is_notified=false;
@@ -145,7 +150,8 @@ class buffered_client_iostream : public client_iostream{
 					}
 				}
 				break;
-			}
+			};
+			std::cout<<"Retuning from function"<<std::endl;
 		}
 #if 0
 		bool is_data_available(){

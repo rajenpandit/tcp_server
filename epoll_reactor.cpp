@@ -9,21 +9,13 @@ bool epoll_reactor::register_descriptor(std::shared_ptr<fdbase> fdb, std::functi
 
 	{
 //		std::lock_guard<std::mutex> lk(_mutex);
-/*
 		auto it = _callback_map.find(fd);
 		if(it != _callback_map.end()){
 			_callback_map.erase(it);
 		}
-*/
-		if(_callback_map[fd] == nullptr){
-			_callback_map[fd]= std::make_shared<epoll_call_back>(fdb,call_back_fun);
-		}
-		else{
-		_callback_map.at(fd)->reset(fdb,call_back_fun);
-		}
-
-		event.data.ptr = _callback_map[fd].get(); //lifetime of pointer to object will be managed by _callback_map
-
+		auto call_back = std::make_shared<epoll_call_back>(fdb,call_back_fun);
+		_callback_map.emplace(fd,call_back);
+		event.data.ptr = call_back.get();
 	}
 
 	event.events = EPOLLIN | EPOLLET | EPOLLRDHUP;
@@ -37,22 +29,15 @@ bool epoll_reactor::register_descriptor(std::shared_ptr<fdbase> fdb, std::functi
 std::shared_ptr<fdbase> epoll_reactor::remove_descriptor(int fd){
 	std::lock_guard<std::mutex> lk(_mutex);
 	/* In  kernel  versions before 2.6.9, the EPOLL_CTL_DEL operation required a non-NULL pointer in event, even though this argument is ignored. */
-	if(epoll_ctl (_efd, EPOLL_CTL_DEL, fd, NULL) == -1)
-		return nullptr;
-/*
+	std::shared_ptr<fdbase> fdb;
+	epoll_ctl (_efd, EPOLL_CTL_DEL, fd, NULL);
+
 	auto it = _callback_map.find(fd);
 	if(it != _callback_map.end()){
-		std::shared_ptr<fdbase> fd = it->second->get_fd();
+		fdb = it->second->get_fd();
 		_callback_map.erase(it);
-		return fd;
 	}
-*/
-	if(_callback_map[fd]!=nullptr){
-		std::shared_ptr<fdbase> fdb = _callback_map[fd]->get_fd();
-		_callback_map[fd] = nullptr;
-		return fdb;
-	}
-	return nullptr;
+	return fdb;
 }
 bool epoll_reactor::run(){
 	if(is_running)
@@ -69,9 +54,10 @@ bool epoll_reactor::run(){
 		for (int i = 0; i < n; i++)
 		{
 			epoll_call_back* epoll_call_back_p = static_cast<epoll_call_back*>(events[i].data.ptr);
+			int fd = epoll_call_back_p->get_fd()->get_fd();
 			(*epoll_call_back_p)(events[i].events);
 			if(events[i].events & (EPOLLRDHUP | EPOLLHUP)){
-				remove_descriptor(events[i].data.fd);
+				remove_descriptor(fd);
 			}
 		}
 		if(is_running == false){

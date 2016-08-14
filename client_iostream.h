@@ -45,12 +45,16 @@ public:
 		return false;
 	}
 	virtual void notify_read(__attribute__((unused)) unsigned int events){
-		std::vector<char> _data;
-		char ch;
-		while(_socket->receive(&ch, 1, false)){
-			_data.push_back(ch);
+		while(true){
+			std::vector<char> _data;
+			char ch;
+			while(_socket->receive(&ch, 1, false)){
+				_data.push_back(ch);
+			}
+			if(_data.empty())
+				break;
+			read(&_data[0],_data.size());
 		}
-		read(&_data[0],_data.size());
 	}
 public:
 	virtual void read(void* data, size_t size) = 0;

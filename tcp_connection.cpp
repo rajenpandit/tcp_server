@@ -6,6 +6,7 @@
 
 void tcp_connection::remove_client(__attribute__((unused)) int fd){
 	++_max_connection;
+	_reactor.remove_descriptor(fd); //moved to epoll_reactor
 }
 /* 
  * tcp_connection::client_handler function will be called whenever client socket will receive an event.
@@ -13,18 +14,17 @@ void tcp_connection::remove_client(__attribute__((unused)) int fd){
 void tcp_connection::client_handler(std::shared_ptr<fdbase> fdb, unsigned int events){
 	std::shared_ptr<client_iostream> client = std::dynamic_pointer_cast<client_iostream>(fdb);
 	if(client != nullptr){
-		if(client->get_mutex().try_lock())
+		if(events & (EPOLLRDHUP | EPOLLHUP)){
+			std::lock_guard<std::mutex> lk(*client, std::adopt_lock);
+			client->close();
+		}
+		else if(client->get_mutex().try_lock())
 		{
-			_threads->add_task(make_task([=](){
+			_threads->add_task(make_task(std::bind([=](){
 						//std::lock_guard<std::mutex> lk(client);
 						std::lock_guard<std::mutex> lk(*client, std::adopt_lock);
-						if(events & (EPOLLRDHUP | EPOLLHUP)){
-							client->close();
-						}
-						else{
-							client->notify_read(events);
-						}
-						}));
+						client->notify_read(events);
+						})));
 		}
 	}
 }
@@ -53,10 +53,10 @@ void tcp_connection::accept(std::shared_ptr<fdbase> fdb, unsigned int events){
 
 		if(fdb->get_mutex().try_lock())
 		{
-			_threads->add_task(make_task([=](){
+			_threads->add_task(make_task(std::bind([=](){
 						std::lock_guard<std::mutex> lk(fdb->get_mutex(), std::adopt_lock);
 						accept_impl(fdb,events);
-						}));
+						})));
 		}
 	
 }
@@ -71,7 +71,7 @@ void tcp_connection::accept_impl(std::shared_ptr<fdbase> fdb,__attribute__((unus
 			{
 				break;
 			}
-			_threads->add_task(make_task([=](){
+			//_threads->add_task(make_task([=](){
 				if(_max_connection == 0){
 					std::experimental::string_view msg = "Connection Denied, Server busy!!!\r\n";
 					client->write(msg.data(),msg.length());
@@ -85,7 +85,9 @@ void tcp_connection::accept_impl(std::shared_ptr<fdbase> fdb,__attribute__((unus
 				_reactor.register_descriptor(client,std::bind(&tcp_connection::client_handler,this,_1,_2));
 				_acceptor->notify_accept(client, acceptor_base::ACCEPT_SUCCESS);
 				--_max_connection;
-			}));
+		//	}));
+
+		//	std::this_thread::sleep_for(std::chrono::seconds(5));
 		}
 	}
 	catch(const std::bad_cast& e){

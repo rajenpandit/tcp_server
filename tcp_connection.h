@@ -57,6 +57,9 @@ public:
 	void client_handler(std::shared_ptr<fdbase> fdb, unsigned int events);	
 	void accept(std::shared_ptr<fdbase> fdb, unsigned int events);
 	void accept_impl(std::shared_ptr<fdbase> fdb, unsigned int events);
+	const socket_factory& get_socket_factory() const{
+		return _socket_factory;
+	}
 	connection_status_t get_connection_status() const{
 		return _connection_status;
 	}	
@@ -75,7 +78,7 @@ public: //functionalities
 		if(block)
 			_reactor.run();
 		else
-			_threads->add_task(make_task(&epoll_reactor::run,_reactor));
+			_threads->add_task(make_task(&epoll_reactor::run,&_reactor));
 	}
 	void stop_reactor(){
 		_reactor.stop();

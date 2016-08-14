@@ -12,7 +12,7 @@ void tcp_server::client_handler(fdbase& fdb, unsigned int events){
 		client_iostream& client = dynamic_cast<client_iostream&>(fdb);
 		if(client.get_mutex().try_lock())
 		{
-			_threads->add_task(make_task([&,this](){
+		//	_threads->add_task(make_task([&,this](){
 						//std::lock_guard<std::mutex> lk(client);
 						std::lock_guard<std::mutex> lk(client, std::adopt_lock);
 						if(events & (EPOLLRDHUP | EPOLLHUP)){
@@ -21,7 +21,7 @@ void tcp_server::client_handler(fdbase& fdb, unsigned int events){
 						else{
 						client.notify_read(events);
 						}
-						}));
+			//			}));
 		}
 	}
 	catch(const std::bad_cast& e){
@@ -81,7 +81,7 @@ void tcp_server::start(const endpoint &e, bool block) noexcept{
 			set_error(START_ATTEMPTED,CREATE_FAILED);	
 		}
 	}
-	if(!socket.bind()){
+	if(!socket.bind(e.reuse_add)){
 		set_error(START_ATTEMPTED,BIND_FAILED);	
 	}	
 	if(!socket.listen(e.backlog)){

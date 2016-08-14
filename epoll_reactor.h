@@ -5,7 +5,7 @@
 #include <sstream>
 #include <sys/epoll.h>
 #include <functional>
-#include <vector>
+#include <map>
 #include <memory>
 #include "fdbase.h"
 #include <iostream>
@@ -18,6 +18,10 @@ class epoll_call_back
 public:
 	epoll_call_back( std::shared_ptr<fdbase> fd, std::function<void(std::shared_ptr<fdbase>fdbase, unsigned int)> call_back_fun ) : _fd(fd), 
 	_call_back_fun(call_back_fun){
+	}
+	~epoll_call_back()
+	{
+		std::cout<<"epoll_call_back Destructed"<<std::endl;
 	}
 public:
 	void reset(const std::shared_ptr<fdbase>& fd, const std::function<void(std::shared_ptr<fdbase>fdbase, unsigned int)>& call_back_fun){
@@ -82,9 +86,6 @@ public:
 			throw epoll_reactor_exception("Error:"+std::to_string(_efd));
 		}
 		is_running=false;
-		_callback_map.resize(getfdlimit());
-		for(int i=0 ; i<1000; i++)
-			_callback_map[i]= std::make_shared<epoll_call_back>(nullptr,nullptr);
 	}
 public:
 	/* associates a callback function to a descriptor, 
@@ -109,8 +110,7 @@ private:
 	int _efd;
 	bool is_running;
 	unsigned int _max_events;
-	std::vector<std::shared_ptr<epoll_call_back>> _callback_map;
-//	std::map<int,std::shared_ptr<epoll_call_back>> _callback_map;
+	std::map<int,std::shared_ptr<epoll_call_back>> _callback_map;
 	std::mutex _mutex;
 };
 #endif
