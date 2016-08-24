@@ -2,7 +2,7 @@
 #include <iostream>
 #include <string>
 #include <cstring>
-
+using namespace rpt;
 bool tcp_socket::create(int port){
 	return create(port,NULL);
 }

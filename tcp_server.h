@@ -8,7 +8,7 @@
 #include "acceptor_base.h"
 #include <functional>
 #include <map>
-
+namespace rpt{
 class tcp_server{
 public:
 	enum server_status_t{IDLE,START_ATTEMPTED,RUNNING,STOPPED};
@@ -71,4 +71,5 @@ private:
 	std::function<void(server_status_t, error_t)> _error_handler;	
 	acceptor_base& _accept;
 };
+}
 #endif

@@ -7,8 +7,10 @@
 #include <functional>
 #include <map>
 #include <memory>
-#include "fdbase.h"
 #include <iostream>
+#include "fdbase.h"
+#include "thread_pool.h"
+namespace rpt{
 /*
 *	epoll_call_back class provides an interface to epoll_reactor 
 *	to maintain lifetime for a socket / fdbase.
@@ -21,7 +23,7 @@ public:
 	}
 	~epoll_call_back()
 	{
-		std::cout<<"epoll_call_back Destructed"<<std::endl;
+//		std::cout<<"epoll_call_back Destructed"<<std::endl;
 	}
 public:
 	void reset(const std::shared_ptr<fdbase>& fd, const std::function<void(std::shared_ptr<fdbase>fdbase, unsigned int)>& call_back_fun){
@@ -85,7 +87,10 @@ public:
 		if (_efd == -1){
 			throw epoll_reactor_exception("Error:"+std::to_string(_efd));
 		}
-		is_running=false;
+		_is_running=false;
+	}
+	~epoll_reactor(){
+		_thread.join();
 	}
 public:
 	/* associates a callback function to a descriptor, 
@@ -94,9 +99,10 @@ public:
 	bool register_descriptor(std::shared_ptr<fdbase> fdb, std::function<void(std::shared_ptr<fdbase>, unsigned int)> call_back_fun);
 	std::shared_ptr<fdbase> remove_descriptor(int fd);
 	/* Start epoll_reactor */
-	bool run();
+	bool run(bool block=true);
+	void run_impl();
 	void stop(){
-		is_running=false;
+		_is_running=false;
 	}
 private:
 	int getfdlimit(){
@@ -108,9 +114,11 @@ private:
 	}
 private:
 	int _efd;
-	bool is_running;
+	bool _is_running;
 	unsigned int _max_events;
+	std::thread _thread;
 	std::map<int,std::shared_ptr<epoll_call_back>> _callback_map;
 	std::mutex _mutex;
 };
+}
 #endif

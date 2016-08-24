@@ -1,6 +1,7 @@
 #ifndef __FDBASE_H__05032016_H__
 #define __FDBASE_H__05032016_H__
 #include <mutex>
+namespace rpt{
 class fdbase{
 public:
 //	virtual socket& get_socket() = 0;	
@@ -26,4 +27,5 @@ protected:
 	std::mutex _mutex;
 	const int& _fd;
 };
+}
 #endif

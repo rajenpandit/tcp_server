@@ -1,6 +1,7 @@
 #ifndef __ACCEPTOR_BASE_H__
 #define __ACCEPTOR_BASE_H__
 #include <memory>
+namespace rpt{
 class acceptor_base{
 public:
 	enum acceptor_status_t{ACCEPT_SUCCESS,ACCEPT_FAILED,DUPLICATE_CLIENT_SOCKET};
@@ -10,4 +11,5 @@ public:
 	virtual ~acceptor_base(){
 	}
 };
+}
 #endif

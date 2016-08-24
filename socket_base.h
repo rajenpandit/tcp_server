@@ -6,6 +6,7 @@
 #include <mutex>
 #include <unistd.h>
 #include <fcntl.h>
+namespace rpt{
 class socket_base{
 
 public: //NOTE: All virtual function must be inherited by derived class
@@ -44,4 +45,5 @@ private:
 	std::function<void(socket_base& , unsigned int)> _event_handler;
 	std::function<void(socket_base&)> _close_event_handler;
 };
+}
 #endif

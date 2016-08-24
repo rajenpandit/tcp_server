@@ -12,7 +12,7 @@
 #include <unordered_map>
 #include <limits>
 #include <atomic>
-
+namespace rpt{
 class tcp_connection{
 public:
 	enum connection_status_t{IDLE,SYNC_SENT,ESTABLISHED,CLOSED};
@@ -33,16 +33,16 @@ public:
 
 public:
 /* Constructor with max_thread */
-	tcp_connection(socket_factory& socket_factory, unsigned int max_thread, 
+	tcp_connection(std::shared_ptr<socket_factory> socket_factory, unsigned int max_thread,int max_events=1000, 
 			std::function<void(connection_status_t, error_t)> error_handler=nullptr) : 
-		_socket_factory(socket_factory),_threads(std::make_shared<thread_pool>(max_thread)),
-		_error_handler(error_handler),_reactor(1000){
+		_socket_factory(socket_factory),_threads(std::make_shared<thread_pool>(max_thread)),_reactor(max_events),
+		_error_handler(error_handler){
 	}
 /* Constructor with thread_pool */
-	tcp_connection(socket_factory& socket_factory,std::shared_ptr<thread_pool> threads, 
+	tcp_connection(std::shared_ptr<socket_factory> socket_factory,std::shared_ptr<thread_pool> threads,int max_events=1000, 
 			std::function<void(connection_status_t, error_t)> error_handler=nullptr) : 
-		_socket_factory(socket_factory), _threads(threads),
-		_error_handler(error_handler),_reactor(1000){
+		_socket_factory(socket_factory), _threads(threads),_reactor(max_events),
+		_error_handler(error_handler){
 	}
 public:
 	tcp_connection(tcp_connection&)=delete;
@@ -57,7 +57,7 @@ public:
 	void client_handler(std::shared_ptr<fdbase> fdb, unsigned int events);	
 	void accept(std::shared_ptr<fdbase> fdb, unsigned int events);
 	void accept_impl(std::shared_ptr<fdbase> fdb, unsigned int events);
-	const socket_factory& get_socket_factory() const{
+	const std::shared_ptr<socket_factory> get_socket_factory() const{
 		return _socket_factory;
 	}
 	connection_status_t get_connection_status() const{
@@ -75,10 +75,8 @@ public: //functionalities
 			bool block=true) noexcept;	
 	void start_reactor(bool block=true){
 		_threads->start(); // no action will be taken if threads are already running
-		if(block)
-			_reactor.run();
-		else
-			_threads->add_task(make_task(&epoll_reactor::run,&_reactor));
+		_reactor.run(block);
+			//_threads->add_task(make_task(&epoll_reactor::run,&_reactor,block));
 	}
 	void stop_reactor(){
 		_reactor.stop();
@@ -87,11 +85,11 @@ public: //functionalities
 private:
 	void set_error(connection_status_t status, error_t error);
 private:
-	socket_factory& _socket_factory;
+	std::shared_ptr<socket_factory> _socket_factory;
 	std::shared_ptr<thread_pool> _threads;
+	epoll_reactor _reactor;
 	std::function<void(connection_status_t, error_t)> _error_handler;	
 	error_t _connection_error;
-	epoll_reactor _reactor;
 	connection_status_t _connection_status;
 	std::shared_ptr<acceptor_base> _acceptor;
 	std::unordered_map<std::string,std::queue<std::shared_ptr<fdbase>>> _client_map;
@@ -129,5 +127,5 @@ T* tcp_connection::get_connection(const std::string& ip, int port, TArgs... args
 	client->set_id(key);
 	return client.get();
 }
-
+}
 #endif

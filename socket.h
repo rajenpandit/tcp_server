@@ -7,6 +7,7 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include "socket_base.h"
+namespace rpt{
 class socket{
 public:
 #if 0
@@ -77,4 +78,5 @@ public:
 private:
 	std::unique_ptr<socket_base> _socket;
 };
+}
 #endif

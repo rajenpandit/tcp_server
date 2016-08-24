@@ -7,7 +7,7 @@
 #include <unistd.h>
 #include <errno.h>
 #include <stdlib.h>
-
+namespace rpt{
 class tcp_socket : public socket_base{
 public:
 	virtual bool create(int port);
@@ -23,4 +23,5 @@ public:
 private:
 	addrinfo _addrinfo;
 };
+}
 #endif

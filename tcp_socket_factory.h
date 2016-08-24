@@ -4,12 +4,13 @@
 #include "tcp_socket.h"
 #include <memory>
 #include <iostream>
-
+namespace rpt{
 class tcp_socket_factory : public socket_factory{
 public:
 	std::unique_ptr<socket_base> get_socket() const override{
 		return std::make_unique<tcp_socket>();
 	}
 };
+}
 #endif
 

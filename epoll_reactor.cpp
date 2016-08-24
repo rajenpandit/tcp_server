@@ -2,6 +2,7 @@
 #include <iostream>
 #include <chrono>
 #include <thread>
+using namespace rpt;
 bool epoll_reactor::register_descriptor(std::shared_ptr<fdbase> fdb, std::function<void(std::shared_ptr<fdbase>, unsigned int)> call_back_fun){
 	struct epoll_event event;
 	int s;
@@ -39,14 +40,21 @@ std::shared_ptr<fdbase> epoll_reactor::remove_descriptor(int fd){
 	}
 	return fdb;
 }
-bool epoll_reactor::run(){
-	if(is_running)
+bool epoll_reactor::run(bool block){
+	if(_is_running)
 		return false;
+	_is_running=true;
+	if(block)
+		run_impl();
+	else
+		_thread = std::thread(&epoll_reactor::run_impl,this);
+	return _is_running;
+}
+void epoll_reactor::run_impl(){
 	struct epoll_event* events = static_cast<epoll_event*>(calloc (_max_events, sizeof(epoll_event)));
-	is_running=true;
 	while(true)
 	{
-		int n = epoll_wait (_efd, events, _max_events, 10);
+		int n = epoll_wait (_efd, events, _max_events, -1);
 #ifdef POLL_SLEEP
 		int waiting_time = 100;
 		std::chrono::high_resolution_clock::time_point t1 = std::chrono::high_resolution_clock::now();
@@ -60,9 +68,9 @@ bool epoll_reactor::run(){
 				remove_descriptor(fd);
 			}
 		}
-		if(is_running == false){
+		if(_is_running == false){
 			free(events);
-			return true;
+			return;
 		}
 #ifdef POLL_SLEEP
 		std::chrono::high_resolution_clock::time_point t2 = std::chrono::high_resolution_clock::now();
@@ -73,5 +81,5 @@ bool epoll_reactor::run(){
 		}
 #endif
 	}
-	is_running=false;
+//	is_running=false;
 }

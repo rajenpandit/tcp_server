@@ -3,6 +3,7 @@
 
 #include "fdbase.h"
 #include <memory>
+namespace rpt{
 class server_socket : public fdbase{
 public:
 	server_socket(std::unique_ptr<socket_base> soc) : fdbase(soc->get_fd()), _socket(std::move(soc)){
@@ -33,4 +34,5 @@ public:
 private:
 	std::unique_ptr<socket_base> _socket;
 };
+}
 #endif

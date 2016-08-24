@@ -1,6 +1,6 @@
 #include "tcp_server.h"
 #include <mutex>
-
+using namespace rpt;
 void tcp_server::remove_client(int fd){
 	_reactor.remove_descriptor(fd);
 }

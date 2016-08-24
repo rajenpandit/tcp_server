@@ -1,6 +1,6 @@
 #ifndef __UTILS_H__07032016_RAJEN__
 #define __UTILS_H__07032016_RAJEN__
-
+namespace rpt{
 struct utils{
 	/* trim a string */
 	static std::string ltrim(const std::string& s){
@@ -32,4 +32,5 @@ struct utils{
 		return std::pair<std::string,std::string>(); //returning empty pair, with default value (empty) of string 
 	}
 };
+}
 #endif

@@ -7,6 +7,7 @@
 #include <limits.h>
 #include <sys/ioctl.h>
 #include <experimental/string_view>
+namespace rpt{
 class condition_t{
 public:
 	condition_t() : _is_true(false){
@@ -213,6 +214,7 @@ std::unique_ptr<condition_t> datasize(size_t size){
 inline
 std::unique_ptr<condition_t> string_found(const std::string& str){
 	return std::unique_ptr<condition_t>(new string_found_t(str));
+}
 }
 #endif
 #endif

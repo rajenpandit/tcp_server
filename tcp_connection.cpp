@@ -3,7 +3,7 @@
 #include <mutex>
 #include <experimental/string_view>
 #include <chrono>
-
+using namespace rpt;
 void tcp_connection::remove_client(__attribute__((unused)) int fd){
 	++_max_connection;
 	_reactor.remove_descriptor(fd); //moved to epoll_reactor
@@ -104,7 +104,7 @@ void tcp_connection::start_listening(std::shared_ptr<acceptor_base> acceptor,con
 		__attribute__((unused)) bool block) noexcept{
 	_acceptor = acceptor;	
 	_max_connection = max_connection;
-	std::unique_ptr<socket_base> socket = _socket_factory.get_socket();
+	std::unique_ptr<socket_base> socket = _socket_factory->get_socket();
 	if(e.ip.length()){
 		if(!socket->create(e.port,e.ip.c_str())){	
 			set_error(SYNC_SENT,CREATE_FAILED);	

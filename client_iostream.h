@@ -4,6 +4,7 @@
 #include "vector"
 #include "socket_base.h"
 #include <memory>
+namespace rpt{
 class client_iostream : public fdbase{
 public:
 	client_iostream(std::unique_ptr<socket_base> soc) : fdbase(soc->get_fd()), _socket(std::move(soc)){
@@ -77,4 +78,5 @@ protected:
 	std::unique_ptr<socket_base> _socket;
 	std::vector<std::function<void(int)>> _close_handlers;
 };
+}
 #endif
